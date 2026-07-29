@@ -128,23 +128,65 @@ that region is regenerated wholesale on every rollup.
 
 ### Continuation — updating after a working session
 This is the common case.
-1. Read the current briefing.
+1. Read the current briefing. (Do **not** preload `ARCHIVE.md` if one exists — it is
+   consult-on-demand long-term memory, read only when a question actually points there.)
 2. Apply the disciplines below (downstream-impact, discrepancy, decision-deadline) as you work.
 3. `python3 scripts/briefing.py bump <path>` — version + date are now handled for you.
 4. **Replace §3 (This Session)** with what was done this session — reference commit SHAs rather
-   than re-narrating diffs; capture the *why*, the decisions, and anything that rippled.
-5. Update §2 status, §4 next steps, §5 decisions (append-only), §6 open questions, §7
-   discrepancies. Fill the Version-History summary that `bump` stubbed.
-6. `python3 scripts/briefing.py pointer <project>` to ensure the context-file pointer is current.
-7. If this briefing declares a `parent`, `python3 scripts/briefing.py rollup <parent>` to refresh the parent's constellation matrix + surfaced items.
-8. `python3 scripts/briefing.py check <path>` — fix every error before declaring done.
+   than re-narrating diffs; capture the *why*, the decisions, and anything that rippled. If the
+   project has an `ARCHIVE.md`, append the outgoing §3's long-form to its §9 section first, and
+   keep the new §9 row a one-liner.
+5. Update §2 status, §4 next steps, §5 decisions (append-only in numbering), §6 open questions,
+   §7 discrepancies. Fill the Version-History summary that `bump` stubbed — **one line**; the
+   long-form narrative lives in §3 (and the archive, over time), not in §9.
+6. Move newly RESOLVED §6/§7 entries and newly SUPERSEDED §4 blocks to `ARCHIVE.md` (see the
+   archival discipline below), leaving one-line pointers.
+7. `python3 scripts/briefing.py pointer <project>` to ensure the context-file pointer is current.
+8. If this briefing declares a `parent`, `python3 scripts/briefing.py rollup <parent>` to refresh the parent's constellation matrix + surfaced items.
+9. `python3 scripts/briefing.py check <path>` — fix every error before declaring done. Treat a
+   size warning as the trigger for a condense pass (below).
 
 ### The iron rule
 Every section carries forward. Only §3 (This Session) is replaced wholesale; all others are
-updated in place or left unchanged — never dropped or "tightened up." `check` enforces this by
-diffing against the prior committed version, so a dropped section *fails validation* rather than
-relying on you to remember. (Without a git repo in the hub, `check` can only verify presence — it
-can't diff against history; `git init` the hub to get the full guard.)
+updated in place or left unchanged — never dropped or "tightened up" *in place*. `check`
+enforces this by diffing against the prior committed version, so a dropped section *fails
+validation* rather than relying on you to remember. (Without a git repo in the hub, `check` can
+only verify presence — it can't diff against history; `git init` the hub to get the full guard.)
+The one sanctioned way content leaves the briefing is a **move to `ARCHIVE.md`** (below): the
+entry departs verbatim and leaves a one-line pointer, so nothing is ever silently deleted.
+
+### Archival discipline — the memory tiers
+A long-lived project outgrows a single document. The tiers, and where each fact lives:
+
+- **The briefing** = working memory — what the next session needs to resume cold, one read.
+- **`ARCHIVE.md`** (beside the briefing) = long-term memory — superseded §4 blocks, resolved
+  §6/§7 entries, decision prose that graduated to an ADR, and the long-form per-version session
+  history. Greppable without git archaeology. **Consult on demand only; never preload.**
+- **ADRs** (in the project repo, where the project keeps them) = the canonical decision record.
+- **The hub's git history** = forensics; the ultimate record either way.
+
+Rules for the move (what keeps this spirit-preserving rather than a deletion pass):
+1. **Harvest before archive.** Before moving a superseded/resolved item, check it for
+   not-yet-promoted do-not-relitigate facts — especially *tried-and-rejected mechanisms*. Those
+   get a §5 line (or an ADR pointer) first; "we tried X and it failed because Y" must stay
+   reachable from the live briefing.
+2. **Still-true facts never move.** When condensing a §2 row or §4 block, every live
+   caveat/residual stays; only how-we-got-here narration moves.
+3. **Move verbatim, append-only.** Archived content is never edited after arrival. The archive
+   mirrors the briefing's section structure (§4 history / §5 prose / §6 resolved / §7 resolved /
+   §9 long-form).
+4. **§5 stays append-only in numbering.** An ADR-backed entry may compress to a one-line index
+   row (`#NN · headline · ADR ref`) with its prose archived; briefing-only decisions keep full
+   text — the briefing is their only home.
+5. **The meta `status=` is the current headline ONLY** — a sentence or two, never an accreted
+   changelog. History belongs to §9 (one-liners) and the archive (long-form).
+
+**When to run a condense pass:** when `check` warns on size (briefing > ~80KB, oversized meta
+line, paragraph-sized §9 rows), or at a natural arc-close. Small projects never need one.
+(Born from a real case: a 40-version umbrella briefing hit 262KB — no longer readable in one
+pass — with every fact recorded in 3–15 places; the condense pass cut it 75% with zero unique
+facts lost, because everything removed was a duplicate of §9, an ADR, or self-marked
+superseded/resolved.)
 
 ## Disciplines (these stay with you — runtime-agnostic)
 

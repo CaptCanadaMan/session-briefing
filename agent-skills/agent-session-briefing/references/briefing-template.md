@@ -41,8 +41,11 @@ each call replaces the prior schedule" beats "updated settings."
 Ordered by dependency. Note blockers and prerequisites.
 
 ### §5 — Design Decisions Log
-Append-only. The rationale behind locked choices — the "do not relitigate" record. Never remove
-entries; stamp the version each one entered.
+Append-only **in numbering**. The rationale behind locked choices — the "do not relitigate"
+record. Stamp the version each one entered. An entry whose decision is canonically recorded in
+an ADR may compress to a one-line index row (`#NN · headline · ADR ref`) with its prose moved
+verbatim to `ARCHIVE.md`; briefing-only decisions keep full text here — this is their only home.
+Never delete an entry outright.
 
 ### §6 — Open Questions
 Unresolved questions, each with the point at which it blocks progress. Move an entry to §5 once
@@ -59,7 +62,17 @@ the project.
 
 ### §9 — Version History
 One row per version (version · date · one-line summary). Append-only. Git holds the full diff
-history, so this stays short.
+history, so this stays short — a row is a **one-liner**, never a session write-up. When the
+project has an `ARCHIVE.md`, the long-form narrative (the outgoing §3) is appended there at each
+bump and §9 keeps only the hook.
+
+## ARCHIVE.md — the long-term memory tier (larger projects)
+A project whose briefing outgrows one read gains an `ARCHIVE.md` beside it: superseded §4
+blocks, resolved §6/§7 entries, ADR-graduated §5 prose, and the long-form per-version session
+history, all **moved verbatim** (append-only, never edited after arrival) with one-line pointers
+left behind. It mirrors the briefing's section structure. Consult on demand only — a session
+resuming cold reads the briefing, not the archive. The full discipline (harvest-before-archive,
+still-true-facts-never-move, when to condense) is in SKILL.md.
 
 ## Constellation & surfacing (multi-segment projects)
 

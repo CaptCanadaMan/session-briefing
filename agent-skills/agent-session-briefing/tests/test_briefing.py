@@ -114,6 +114,43 @@ class CliRoundTrip(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("§7", r.stderr)
 
+    def test_check_warns_on_oversized_briefing(self):
+        run("new", "myproj", "--hub", str(self.hub), "--project-dir", str(self.proj))
+        br = self._briefing("myproj")
+        br.write_text(br.read_text() + "\n<!-- pad -->\n" + ("x" * 90_000) + "\n")
+        r = run("check", str(br))
+        self.assertEqual(r.returncode, 0, r.stderr)  # warning, never an error
+        self.assertIn("condense pass", r.stderr)
+
+    def test_check_warns_on_accreted_meta_line(self):
+        run("new", "myproj", "--hub", str(self.hub), "--project-dir", str(self.proj))
+        br = self._briefing("myproj")
+        text = br.read_text()
+        text = re.sub(r"status=[^|>]*-->", "status=" + "history; " * 100 + "-->", text, count=1)
+        br.write_text(text)
+        r = run("check", str(br))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("current headline only", r.stderr)
+
+    def test_check_warns_on_paragraph_version_history_rows(self):
+        run("new", "myproj", "--hub", str(self.hub), "--project-dir", str(self.proj))
+        br = self._briefing("myproj")
+        # "Initial briefing." is unique to the §9 row — the §5 skeleton also
+        # carries a "| v1.0 |" cell, so anchoring on that would land in §5,
+        # where the warning correctly does not look.
+        br.write_text(br.read_text().replace(
+            "Initial briefing. |", ("narrative " * 40) + "|", 1))
+        r = run("check", str(br))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("one-liners", r.stderr)
+
+    def test_check_stays_quiet_on_a_healthy_briefing(self):
+        run("new", "myproj", "--hub", str(self.hub), "--project-dir", str(self.proj))
+        r = run("check", str(self._briefing("myproj")))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for noise in ("condense pass", "current headline only", "one-liners"):
+            self.assertNotIn(noise, r.stderr)
+
     def test_rollup_builds_matrix_and_surfaces(self):
         run("new", "parent", "--hub", str(self.hub), "--project-dir", str(self.base / "p"))
         (self.base / "c").mkdir()

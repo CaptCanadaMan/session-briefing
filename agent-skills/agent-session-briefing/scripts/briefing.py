@@ -487,6 +487,24 @@ def cmd_check(args) -> None:
     for bad in bad_status_tokens(text):
         warnings.append(f"§2 non-standard status token: {bad!r}")
 
+    # Size guards — warnings only, the trigger for an archival condense pass (see SKILL.md).
+    size = len(text.encode())
+    if size > 80_000:
+        warnings.append(f"briefing is {size // 1000}KB (> 80KB) — run a condense pass "
+                        "(move superseded/resolved content to ARCHIVE.md)")
+    meta = META_RE.search(text)
+    if meta and len(meta.group(1)) > 500:
+        warnings.append(f"meta line is {len(meta.group(1))} chars (> 500) — status= must be "
+                        "the current headline only, not an accreted changelog")
+    nine = section_body(text, 9)
+    if nine:
+        long_rows = [ln for ln in nine.splitlines()
+                     if ln.lstrip().startswith("|") and len(ln) > 300
+                     and not set(ln.strip().strip("|")) <= set("-:| ")]
+        if long_rows:
+            warnings.append(f"§9 has {len(long_rows)} row(s) over 300 chars — rows are "
+                            "one-liners; long-form belongs in ARCHIVE.md")
+
     for w in warnings:
         print(f"warn: {w}", file=sys.stderr)
     for e in errors:
