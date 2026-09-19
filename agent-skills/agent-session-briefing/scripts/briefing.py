@@ -243,16 +243,35 @@ def prior_section_set(path: Path) -> set[int] | None:
         return None
 
 
-def _append_table_row(text: str, row: str) -> str:
+def _insert_version_history_row(text: str, row: str) -> str:
+    """Append a row to the §9 Version History table specifically.
+
+    Targets §9 rather than "the last table row in the document": briefings carry
+    a Roadmap table *after* §9, so scanning for the final `|`-line (the old
+    behaviour) appended version rows into the Roadmap by mistake. Find §9, then
+    the first run of table rows beneath it, and insert after that run.
+    """
     lines = text.splitlines()
-    last = None
+    start = None
     for i, line in enumerate(lines):
-        if line.lstrip().startswith("|"):
-            last = i
-    if last is None:
-        lines.append(row)
+        m = SECTION_RE.match(line)
+        if m and int(m.group(1)) == 9:
+            start = i
+            break
+    if start is None:
+        lines.append(row)  # no §9 — append rather than silently drop the row
     else:
-        lines.insert(last + 1, row)
+        i = start + 1
+        while i < len(lines) and not lines[i].lstrip().startswith("|"):
+            if SECTION_RE.match(lines[i]):
+                break  # another section before any table — don't cross into it
+            i += 1
+        if i < len(lines) and lines[i].lstrip().startswith("|"):
+            while i + 1 < len(lines) and lines[i + 1].lstrip().startswith("|"):
+                i += 1
+            lines.insert(i + 1, row)  # after the last row of the §9 table
+        else:
+            lines.insert(start + 1, row)  # §9 present but tableless — seed it
     out = "\n".join(lines)
     return out + "\n" if text.endswith("\n") else out
 
@@ -409,7 +428,7 @@ def cmd_bump(args) -> None:
     nv, d = f"v{major}.{minor}", today()
     text = VERSION_RE.sub(nv, text, count=1)   # header version
     text = DATE_RE.sub(d, text, count=1)       # header date
-    text = _append_table_row(text, f"| {nv} | {d} | <!-- fill: what changed this session --> |")
+    text = _insert_version_history_row(text, f"| {nv} | {d} | <!-- fill: what changed this session --> |")
     path.write_text(text)
     print(nv)
     meta = parse_meta(text)
